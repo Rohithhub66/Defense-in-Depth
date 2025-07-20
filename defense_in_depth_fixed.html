@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Defense in Depth - Custom Timers</title>
+<style>
+  html, body {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    min-height: 0;
+  }
+  body {
+    height: 100vh;
+    min-height: 0;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+  }
+  .sidebar {
+    flex: 0 0 270px;
+    min-width: 200px;
+    max-width: 380px;
+    background: #f0f0f0;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    border-right: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 2;
+  }
+  .sidebar button.layer-btn {
+    display: block;
+    width: 100%;
+    margin: 4px 0;
+    padding: 10px;
+    background: #1565c0;
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background 0.2s;
+    font-size: 15px;
+  }
+  .sidebar button.layer-btn.active {
+    background: #0d47a1;
+  }
+  .sidebar button.layer-btn:hover {
+    background: #1976d2;
+  }
+  .sidebar h2 {
+    text-align: center;
+  }
+  .layer-control {
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  .layer-control input {
+    width: 60px;
+    margin-left: 5px;
+  }
+  .main {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    height: 100vh;
+    position: relative;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    border-left: 4px solid #ccc;
+    overflow: hidden;
+  }
+  #layerLabels {
+    text-align:center;
+    margin-bottom:10px;
+    margin-top:20px;
+    flex-shrink: 0;
+  }
+  #layerNameLabel {
+    font-size: 1.3em;
+    font-weight:bold;
+  }
+  #protectionCountLabel {
+    color:#1976d2;
+    font-size:1em;
+    margin-left:1em;
+  }
+  #svgContainer {
+    padding: 20px;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+  }
+  #svgContainer svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #fff;
+  }
+  #protectionSection {
+    margin-top: 10px;
+    padding: 10px;
+    background: #e9f1fb;
+    border-radius: 6px;
+    border: 1px solid #b6d4fa;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #protectionSection h3 {
+    margin: 0 0 4px 0;
+    font-size: 15px;
+    color: #1565c0;
+    text-align: left;
+  }
+  #protectionList {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    min-height: 24px;
+  }
+  .protection-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+  }
+  .protection-item input[type="text"] {
+    flex: 1;
+    font-size: 13px;
+    padding: 1px 4px;
+    border: 1px solid #bbb;
+    border-radius: 3px;
+  }
+  .protection-actions button {
+    background: none;
+    border: none;
+    color: #1565c0;
+    cursor: pointer;
+    font-size: 15px;
+    margin-left: 2px;
+    border-radius: 3px;
+    padding: 2px 4px;
+    transition: background 0.15s;
+  }
+  .protection-actions button:hover {
+    background: #dbeafe;
+    color: #0d47a1;
+  }
+  #addProtectionForm {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+  }
+  #addProtectionForm input[type="text"] {
+    flex: 1;
+    font-size: 13px;
+    padding: 2px 6px;
+    border: 1px solid #bbb;
+    border-radius: 3px;
+  }
+  #addProtectionForm button {
+    background: #1565c0;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  #addProtectionForm button:hover {
+    background: #1976d2;
+  }
+  .freeze-btn {
+    margin: 12px 0 0 0;
+    background: #e53935;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 16px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .freeze-btn.frozen {
+    background: #757575;
+  }
+  .toggle-impl {
+    width: 22px; height: 22px; border: none; border-radius: 50%; margin-right:3px; cursor: pointer; background: #ffb300; display: flex; align-items: center; justify-content: center; font-size: 15px; transition: background 0.2s;
+  }
+  .toggle-impl.implemented { background: #43a047; color: #fff;}
+  .toggle-impl:not(.implemented) { background: #ffb300; color: #fff;}
+  .toggle-impl:focus { outline: 2px solid #1976d2; }
+  @media (max-width: 700px) {
+    body { flex-direction: column; }
+    .sidebar {
+      width: 100vw;
+      min-width: 0;
+      max-width: none;
+      border-right: none;
+      border-bottom: 1px solid #ccc;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 0;
+    }
+    .main {
+      border-left: none;
+      border-top: 4px solid #ccc;
+      min-height: 0;
+      height: 60vh;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <h2>Layer Timers (sec)</h2>
+  <div id="layerButtons"></div>
+  <div id="controls">
+    <div class="layer-control"><label for="timer0">Layer 1:</label> <input id="timer0" min="1" type="number" value="3"/></div>
+    <div class="layer-control"><label for="timer1">Layer 2:</label> <input id="timer1" min="1" type="number" value="3"/></div>
+    <div class="layer-control"><label for="timer2">Layer 3:</label> <input id="timer2" min="1" type="number" value="3"/></div>
+    <div class="layer-control"><label for="timer3">Layer 4:</label> <input id="timer3" min="1" type="number" value="3"/></div>
+    <div class="layer-control"><label for="timer4">Layer 5:</label> <input id="timer4" min="1" type="number" value="3"/></div>
+    <div class="layer-control"><label for="timer5">Layer 6:</label> <input id="timer5" min="1" type="number" value="3"/></div>
+    <div class="layer-control"><label for="timer6">Layer 7:</label> <input id="timer6" min="1" type="number" value="3"/></div>
+  </div>
+  <button onclick="animateLayers()">Animate All</button>
+  <button id="freezeBtn" class="freeze-btn">Freeze</button>
+  <div id="protectionSection">
+    <h3 id="protectionTitle"></h3>
+    <ul id="protectionList"></ul>
+    <form id="addProtectionForm" autocomplete="off">
+      <input type="text" id="newProtection" placeholder="Add protection..." maxlength="60"/>
+      <button type="submit">Add</button>
+    </form>
+  </div>
+</div>
+<div class="main">
+  <div id="layerLabels">
+    <span id="layerNameLabel"></span>
+    <span id="protectionCountLabel"></span>
+  </div>
+  <div id="svgContainer">
+    <svg id="mainSVG" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" aria-label="Defense in Depth Diagram" style="background:#fff;display:block;">
+      <g id="arcgroup" transform="translate(500,400)">
+        <path d="M -338.56 -200 A 390 390 0 0 1 338.56 200" fill="#e3f2fd" id="arc0"></path>
+        <path d="M -307.70 -181 A 355 355 0 0 1 307.70 181" fill="#bbdefb" id="arc1"></path>
+        <path d="M -276.84 -162 A 320 320 0 0 1 276.84 162" fill="#90caf9" id="arc2"></path>
+        <path d="M -245.98 -143 A 285 285 0 0 1 245.98 143" fill="#64b5f6" id="arc3"></path>
+        <path d="M -215.12 -124 A 250 250 0 0 1 215.12 124" fill="#42a5f5" id="arc4"></path>
+        <path d="M -184.26 -105 A 215 215 0 0 1 184.26 105" fill="#2196f3" id="arc5"></path>
+        <path d="M -153.40 -86 A 180 180 0 0 1 153.40 86" fill="#1e88e5" id="arc6"></path>
+        <g id="protectionTexts"></g>
+      </g>
+      <image height="170" href="image.webp" width="220" x="230" y="390" alt="Defense in Depth Illustration"/>
+    </svg>
+  </div>
+</div>
+<script>
+// The coordinate system is always 900x650, center at (450,350), radii fixed. All scaling is via viewBox resizing!
+const arcRadii = [195, 177, 158, 139, 120, 101, 82];
+const layerNames = [
+  "Physical","Network","Perimeter","Endpoint","Application","Data","User"
+];
+const defaultProtections = [
+  ["Locked doors", "Security guards", "Surveillance cameras"],
+  ["Firewalls", "Segmentation", "VPNs"],
+  ["IDS/IPS", "DMZ", "Proxy servers"],
+  ["Antivirus", "EDR", "Patch management"],
+  ["Secure coding", "WAF", "Input validation"],
+  ["Encryption", "Backups", "Access control"],
+  ["Training", "MFA", "Least privilege"]
+];
+const PROTECTIONS_KEY = "defense_in_depth_protections_v6";
+function makeProtectionObjs(names, rIndex) {
+  let arr = [], N = names.length;
+  for (let i = 0; i < N; ++i) {
+    let angle = -90 + ((i + 1) * 180) / (N + 1);
+    arr.push({name: names[i], angle, implemented: false});
+  }
+  return arr;
+}
+function loadProtections() {
+  const data = localStorage.getItem(PROTECTIONS_KEY);
+  if (!data) return defaultProtections.map(makeProtectionObjs);
+  try {
+    const arr = JSON.parse(data);
+    if (!Array.isArray(arr) || arr.length !== 7) throw new Error("corrupt");
+    return arr.map((layer, idx) => {
+      if (!Array.isArray(layer)) return [];
+      return layer.map(obj =>
+        typeof obj === "string"
+          ? {name: obj, angle: 0, implemented: false}
+          : Object.assign({angle: 0, implemented: false}, obj)
+      );
+    });
+  } catch (e) {
+    return defaultProtections.map(makeProtectionObjs);
+  }
+}
+function saveProtections() {
+  localStorage.setItem(PROTECTIONS_KEY, JSON.stringify(protections));
+}
+let protections = loadProtections();
+let currentLayer = 0;
+let frozen = false;
+const arcs = Array.from({length: 7}, (_, i) => document.getElementById('arc' + i));
+
+// ---- PROTECTION ICONS ----
+const protectionIcons = {
+  "lock": "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMTU2NWMwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHJlY3QgeT0iNyIgd2lkdGg9IjE2IiBoZWlnaHQ9IjciIHg9IjAiIHJ4PSIzIi8+PHJlY3QgeT0iNCIgeD0iNCIgd2lkdGg9IjgiIGhlaWdodD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMTU2NWMwIi8+PHJlY3QgeD0iNiIgeT0iMyIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMTU2NWMwIi8+PC9zdmc+",
+  "camera": "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMTU2NWMwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjEwIiB5PSI0Ii8+PHJlY3QgeT0iMyIgd2lkdGg9IjIiIGhlaWdodD0iMiIvPjxjaXJjbGUgY3g9IjgiIGN5PSIxMCIgcj0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMTU2NWMwIi8+PC9zdmc+",
+  "shield": "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMTU2NWMwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHBhdGggZD0iTTEwIDIgTDE2IDUgTDE2IDExIEMxNiAxMyAxMyAxNSAxMCAxNSBDNyAxNSAzIDEzIDMgMTFMMC41IDVMMTAgMiIgLz48L3N2Zz4=",
+  "user": "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMTU2NWMwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PGNpcmNsZSBjeD0iOCIgY3k9IjUiIHI9IjMiLz48cmVjdCB4PSIyIiB5PSIxMSIgd2lkdGg9IjEyIiBoZWlnaHQ9IjMiIHJ4PSIxIi8+PC9zdmc+",
+  "key": "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMTU2NWMwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PGNpcmNsZSBjeD0iNC41IiBjeT0iMTEuNSIgcj0iMi41Ii8+PHJlY3QgeD0iNyIgeT0iMTAiIHdpZHRoPSI3IiBoZWlnaHQ9IjIiLz48cmVjdCB4PSIxMyIgeT0iOCIgd2lkdGg9IjIiIGhlaWdodD0iMiIvPjwvc3ZnPg=="
+};
+const defaultIcon = "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMTU2NWMwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PGNpcmNsZSBjeD0iOCIgY3k9IjgiIHI9IjYiIHN0cm9rZT0ibm9uZSIvPjwvc3ZnPg==";
+function getProtectionIcon(name) {
+  const nameLower = name.toLowerCase();
+  if (nameLower.includes("lock")) return protectionIcons.lock;
+  if (nameLower.includes("camera")) return protectionIcons.camera;
+  if (nameLower.includes("guard") || nameLower.includes("shield") || nameLower.includes("firewall")) return protectionIcons.shield;
+  if (nameLower.includes("user") || nameLower.includes("training")) return protectionIcons.user;
+  if (nameLower.includes("key") || nameLower.includes("vpn")) return protectionIcons.key;
+  return defaultIcon;
+}
+function renderLayerButtons() {
+  const container = document.getElementById('layerButtons');
+  container.innerHTML = '';
+  for (let i = 0; i < layerNames.length; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = layerNames[i];
+    btn.className = 'layer-btn' + (i === currentLayer ? ' active' : '');
+    btn.onclick = () => showLayer(i);
+    container.appendChild(btn);
+  }
+}
+renderLayerButtons();
+
+function animateLayers() {
+  arcs.forEach(arc => arc && (arc.style.display = 'none'));
+  document.getElementById('layerNameLabel').textContent = "";
+  document.getElementById('protectionCountLabel').textContent = "";
+  clearSVGProtections();
+  let delay = 0;
+  for (let i = 0; i < 7; i++) {
+    const timer = parseInt(document.getElementById('timer' + i).value) || 1;
+    delay += timer * 1000;
+    setTimeout(() => {
+      for (let j = 0; j <= i; j++) {
+        if (arcs[j]) arcs[j].style.display = '';
+      }
+      document.getElementById('layerNameLabel').textContent = layerNames[i];
+      document.getElementById('protectionCountLabel').textContent = protections[i].length + " protections";
+      renderSVGProtections(i);
+    }, delay);
+  }
+}
+function showLayer(index) {
+  currentLayer = index;
+  for (let i = 0; i < 7; i++) {
+    if (arcs[i]) arcs[i].style.display = i <= index ? '' : 'none';
+  }
+  renderLayerButtons();
+  renderProtections(index);
+  renderSVGProtections(index);
+  document.getElementById('layerNameLabel').textContent = layerNames[index];
+  document.getElementById('protectionCountLabel').textContent = protections[index].length + " protections";
+}
+function renderProtections(layerIndex) {
+  document.getElementById('protectionTitle').textContent = layerNames[layerIndex] + " Protections";
+  const ul = document.getElementById('protectionList');
+  ul.innerHTML = '';
+  protections[layerIndex].forEach((item, i) => {
+    const li = document.createElement('li');
+    li.className = "protection-item";
+    // Toggle implemented
+    const toggle = document.createElement('button');
+    toggle.className = "toggle-impl" + (item.implemented ? " implemented" : "");
+    toggle.title = item.implemented ? "Implemented" : "To be implemented";
+    toggle.type = "button";
+    toggle.innerHTML = item.implemented ? "✔" : "•";
+    toggle.onclick = () => {
+      item.implemented = !item.implemented;
+      saveProtections();
+      renderProtections(layerIndex);
+      renderSVGProtections(layerIndex);
+    };
+    li.appendChild(toggle);
+
+    const span = document.createElement('span');
+    span.textContent = item.name;
+    span.style.flex = "1";
+    li.appendChild(span);
+    const actions = document.createElement('span');
+    actions.className = "protection-actions";
+    const editBtn = document.createElement('button');
+    editBtn.title = "Edit";
+    editBtn.innerHTML = "✏️";
+    editBtn.onclick = (e) => {
+      e.preventDefault();
+      beginEditProtection(layerIndex, i, item.name, li);
+    };
+    actions.appendChild(editBtn);
+    const delBtn = document.createElement('button');
+    delBtn.title = "Delete";
+    delBtn.innerHTML = "🗑️";
+    delBtn.onclick = (e) => {
+      e.preventDefault();
+      protections[layerIndex].splice(i, 1);
+      saveProtections();
+      renderProtections(layerIndex);
+      document.getElementById('protectionCountLabel').textContent = protections[layerIndex].length + " protections";
+      renderSVGProtections(layerIndex);
+    };
+    actions.appendChild(delBtn);
+    li.appendChild(actions);
+    ul.appendChild(li);
+  });
+}
+function beginEditProtection(layerIndex, protIndex, oldValue, li) {
+  li.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = "text";
+  input.value = oldValue;
+  input.maxLength = 60;
+  input.style.flex = "1";
+  li.appendChild(input);
+  const actions = document.createElement('span');
+  actions.className = "protection-actions";
+  const saveBtn = document.createElement('button');
+  saveBtn.title = "Save";
+  saveBtn.innerHTML = "💾";
+  saveBtn.onclick = (e) => {
+    e.preventDefault();
+    const val = input.value.trim();
+    if (val) {
+      protections[layerIndex][protIndex].name = val;
+      saveProtections();
+      renderProtections(layerIndex);
+      renderSVGProtections(layerIndex);
+    }
+  };
+  actions.appendChild(saveBtn);
+  const cancelBtn = document.createElement('button');
+  cancelBtn.title = "Cancel";
+  cancelBtn.innerHTML = "❌";
+  cancelBtn.onclick = (e) => {
+    e.preventDefault();
+    renderProtections(layerIndex);
+  };
+  actions.appendChild(cancelBtn);
+  li.appendChild(actions);
+  input.focus();
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') saveBtn.click();
+    else if (e.key === 'Escape') cancelBtn.click();
+  };
+}
+document.getElementById('addProtectionForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const input = document.getElementById('newProtection');
+  const val = input.value.trim();
+  if (val) {
+    protections[currentLayer].push({name: val, angle: 0, implemented: false});
+    input.value = "";
+    saveProtections();
+    renderProtections(currentLayer);
+    document.getElementById('protectionCountLabel').textContent = protections[currentLayer].length + " protections";
+    renderSVGProtections(currentLayer);
+  }
+});
+document.addEventListener('keydown', function(e) {
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    const next = (currentLayer + 1) % 7;
+    showLayer(next);
+    focusLayerBtn(next);
+  }
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    const prev = (currentLayer + 6) % 7;
+    showLayer(prev);
+    focusLayerBtn(prev);
+  }
+});
+function focusLayerBtn(idx) {
+  const btns = document.querySelectorAll('.layer-btn');
+  if (btns[idx]) btns[idx].focus();
+}
+
+// ---- SVG PROTECTIONS LOGIC ----
+function clearSVGProtections() {
+  const svgG = document.getElementById('protectionTexts');
+  if (svgG) svgG.innerHTML = '';
+}
+function renderSVGProtections(layerIndex) {
+  clearSVGProtections();
+  const protectionsArr = protections[layerIndex];
+  const svgG = document.getElementById('protectionTexts');
+  if (!svgG) return;
+  const N = protectionsArr.length;
+  if (N === 0) return;
+  const arcRadius = arcRadii[layerIndex];
+  protectionsArr.forEach((prot, i) => {
+    prot.angle = Math.max(-90, Math.min(90, prot.angle));
+    const rad = prot.angle * Math.PI / 180;
+    const x = arcRadius * Math.cos(rad);
+    const y = arcRadius * Math.sin(rad);
+
+    // Group for dragging
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "draggable-protection");
+    g.setAttribute("data-pidx", i);
+    g.setAttribute("cursor", frozen ? "default" : "pointer");
+
+    // Icon
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "image");
+    icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', getProtectionIcon(prot.name));
+    icon.setAttribute("x", x-23);
+    icon.setAttribute("y", y-12);
+    icon.setAttribute("height", "18");
+    icon.setAttribute("width", "18");
+    icon.setAttribute("opacity", prot.implemented ? "1" : "0.4");
+    g.appendChild(icon);
+
+    // Protection name
+    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    txt.setAttribute("x", x);
+    txt.setAttribute("y", y + 2);
+    txt.setAttribute("text-anchor", "start");
+    txt.setAttribute("fill", prot.implemented ? "#388e3c" : "#e65100");
+    txt.setAttribute("font-size", 18);
+    txt.setAttribute("font-family", "Arial");
+    txt.setAttribute("pointer-events", "none");
+    txt.textContent = prot.name;
+    g.appendChild(txt);
+
+    if (!frozen) {
+      g.addEventListener('mousedown', startDrag);
+      g.addEventListener('touchstart', startDrag, {passive:false});
+    }
+    g.addEventListener('dblclick', () => {
+      prot.implemented = !prot.implemented;
+      saveProtections();
+      renderProtections(layerIndex);
+      renderSVGProtections(layerIndex);
+    });
+    svgG.appendChild(g);
+  });
+}
+
+// Drag logic: restrict to current arc
+let isDragging = false, dragIdx = null, dragArcRadius = null, dragSvg, dragLayerIdx = null;
+function startDrag(e) {
+  if (frozen) return;
+  isDragging = true;
+  dragSvg = document.getElementById('mainSVG');
+  dragLayerIdx = currentLayer;
+  dragIdx = +this.getAttribute("data-pidx");
+  dragArcRadius = arcRadii[dragLayerIdx];
+  document.addEventListener("mousemove", dragMove);
+  document.addEventListener("mouseup", endDrag);
+  document.addEventListener("touchmove", dragMove, {passive:false});
+  document.addEventListener("touchend", endDrag);
+  e.preventDefault();
+}
+function dragMove(e) {
+  if (!isDragging) return;
+  let svg = dragSvg;
+  let pt = svg.createSVGPoint();
+  let clientX, clientY;
+  if (e.touches) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  pt.x = clientX;
+  pt.y = clientY;
+  let ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  let transformed = pt.matrixTransform(ctm.inverse());
+  // Relative to center (450,350)
+  let dx = transformed.x - 450;
+  let dy = transformed.y - 350;
+  let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  angle = Math.max(-90, Math.min(90, angle));
+  protections[dragLayerIdx][dragIdx].angle = angle;
+  saveProtections();
+  renderSVGProtections(dragLayerIdx);
+  e.preventDefault();
+}
+function endDrag(e) {
+  isDragging = false;
+  dragIdx = null;
+  dragArcRadius = null;
+  dragLayerIdx = null;
+  document.removeEventListener("mousemove", dragMove);
+  document.removeEventListener("mouseup", endDrag);
+  document.removeEventListener("touchmove", dragMove);
+  document.removeEventListener("touchend", endDrag);
+}
+const freezeBtn = document.getElementById('freezeBtn');
+freezeBtn.onclick = function() {
+  frozen = !frozen;
+  freezeBtn.textContent = frozen ? "Unfreeze" : "Freeze";
+  freezeBtn.classList.toggle("frozen", frozen);
+  renderSVGProtections(currentLayer);
+};
+
+window.addEventListener('resize', () => {
+  renderSVGProtections(currentLayer);
+});
+
+showLayer(0);
+renderSVGProtections(currentLayer);
+</script>
+</body>
+</html>
