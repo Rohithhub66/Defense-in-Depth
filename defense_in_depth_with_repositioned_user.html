@@ -1,0 +1,155 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Defense in Depth - Custom Timers</title>
+<style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 250px;
+      background: #f0f0f0;
+      padding: 10px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+	
+	 .sidebar button {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      background: #1565c0;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .sidebar button:hover {
+      background: #0d47a1;
+    }
+	
+    .sidebar h2 {
+      text-align: center;
+    }
+    .layer-control {
+      margin-bottom: 10px;
+    }
+    .layer-control input {
+      width: 60px;
+      margin-left: 5px;
+    }
+    .main {
+      flex: 1;
+      position: relative;
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-left: 4px solid #ccc;
+    }
+    svg {
+      max-width: 90%;
+      max-height: 90%;
+    }
+    .label {
+      font-size: 12px;
+      font-weight: bold;
+      fill: #fff;
+    }
+  </style>
+</head>
+<body>
+<div class="sidebar">
+<h2>Layer Timers (sec)</h2>
+<button onclick="showLayer(0)">Physical</button>
+<button onclick="showLayer(1)">Network</button>
+<button onclick="showLayer(2)">Perimeter</button>
+<button onclick="showLayer(3)">Endpoint</button>
+<button onclick="showLayer(4)">Application</button>
+<button onclick="showLayer(5)">Data</button>
+<button onclick="showLayer(6)">User</button>
+<div id="controls">
+<div class="layer-control">Layer 1: <input id="timer0" min="1" type="number" value="3"/></div>
+<div class="layer-control">Layer 2: <input id="timer1" min="1" type="number" value="3"/></div>
+<div class="layer-control">Layer 3: <input id="timer2" min="1" type="number" value="3"/></div>
+<div class="layer-control">Layer 4: <input id="timer3" min="1" type="number" value="3"/></div>
+<div class="layer-control">Layer 5: <input id="timer4" min="1" type="number" value="3"/></div>
+<div class="layer-control">Layer 6: <input id="timer5" min="1" type="number" value="3"/></div>
+<div class="layer-control">Layer 7: <input id="timer6" min="1" type="number" value="3"/></div>
+</div>
+<button onclick="animateLayers()">Animate All</button>
+</div>
+<div class="main">
+<svg viewbox="0 0 600 600">
+<g transform="translate(300,300)">
+<path d="M -173.21 -100 A 200 200 0 0 1 173.21 100" fill="#e3f2fd" id="arc0"></path>
+<path d="M -155.89 -90 A 180 180 0 0 1 155.89 90" fill="#bbdefb" id="arc1"></path>
+<path d="M -138.56 -80 A 160 160 0 0 1 138.56 80" fill="#90caf9" id="arc2"></path>
+<path d="M -121.24 -70 A 140 140 0 0 1 121.24 70" fill="#64b5f6" id="arc3"></path>
+<path d="M -103.92 -60 A 120 120 0 0 1 103.92 60" fill="#42a5f5" id="arc4"></path>
+<path d="M -86.60 -50 A 100 100 0 0 1 86.60 50" fill="#2196f3" id="arc5"></path>
+<path d="M -69.28 -40 A 80 80 0 0 1 69.28 40" fill="#1e88e5" id="arc6"></path>
+<text class="label" text-anchor="middle" x="0" y="-110"></text>
+<text class="label" text-anchor="middle" x="0" y="-100"></text>
+<text class="label" text-anchor="middle" x="0" y="-90"></text>
+<text class="label" text-anchor="middle" x="0" y="-80"></text>
+<text class="label" text-anchor="middle" x="0" y="-70"></text>
+<text class="label" text-anchor="middle" x="0" y="-60"></text>
+<text class="label" text-anchor="middle" x="0" y="-50"></text>
+</g>
+<image height="120" href="image.webp" width="150" x="120" y="280"/></svg>
+</div>
+<script>
+  const arcs = Array.from({length: 7}, (_, i) => document.getElementById('arc' + i));
+
+  function animateLayers() {
+    arcs.forEach(arc => arc.style.display = 'none');
+    let delay = 0;
+    for (let i = 0; i < arcs.length; i++) {
+      const timer = parseInt(document.getElementById('timer' + i).value) || 1;
+      delay += timer * 1000;
+      setTimeout(() => {
+        for (let j = 0; j <= i; j++) {
+          arcs[j].style.display = '';
+        }
+      }, delay);
+    }
+  }
+  
+  const protections = [
+      "Physical: Locked doors, security guards, surveillance",
+      "Network: Firewalls, segmentation, VPNs",
+      "Perimeter: IDS/IPS, DMZ, proxy servers",
+      "Endpoint: Antivirus, EDR, patch management",
+      "Application: Secure coding, WAF, input validation",
+      "Data: Encryption, backups, access control",
+      "User: Training, MFA, least privilege"
+    ];
+
+    function showLayer(index) {
+      for (let i = 0; i < 7; i++) {
+        document.getElementById("arc" + i).style.display = i <= index ? "block" : "none";
+      }
+      const text = document.getElementById("protectionText");
+      text.textContent = protections[index];
+      text.setAttribute("y", 20 + index * 20);
+      text.style.display = "block";
+    }
+  
+  
+  
+  
+  
+  
+  
+</script>
+</body>
+</html>
